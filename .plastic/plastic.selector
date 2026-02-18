@@ -1,0 +1,4 @@
+repository "SimuladorManiobrasReanimacion3.0 2026-01-31_01-09-05/SimuladorManiobrasReanimacion3.0@4674148826701@cloud"
+  path "/"
+    br "/main"
+    co "/main"
