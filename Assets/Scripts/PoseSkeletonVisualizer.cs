@@ -5,6 +5,10 @@ public class PoseSkeletonVisualizer : MonoBehaviour
     public PosePipeline pipeline;
     public GameObject jointPrefab;
 
+    [Header("Control de IA (Protocolo Maniquí)")]
+    [Tooltip("Activa esto para dejar el esqueleto fijo y poder interactuar sin que la IA se vuelva loca con tus brazos.")]
+    public bool congelarEsqueleto = false; // <--- NUEVO: El botón de pausa
+
     [Header("Ajustes Visuales")]
     [Tooltip("Distancia (Z) desde el origen del contenedor. 0 para plano.")]
     public float distanciaProfundidad = 0f;
@@ -16,7 +20,7 @@ public class PoseSkeletonVisualizer : MonoBehaviour
     [Tooltip("Marca esto si te ves como en un espejo.")]
     public bool modoEspejo = true;
     [Tooltip("¡MARCA ESTO SI EL ESQUELETO ESTÁ DE CABEZA!")]
-    public bool invertirY = false; // <--- AQUÍ ESTÁ LA OPCIÓN QUE FALTABA
+    public bool invertirY = false;
 
     [Header("Transformación del Maniquí")]
     public Vector3 posicionManiqui = new Vector3(0, 0, 1.5f);
@@ -42,30 +46,35 @@ public class PoseSkeletonVisualizer : MonoBehaviour
 
     void Update()
     {
-        // Actualizamos la transformación del contenedor padre
+        // 1. Actualizamos la transformación del contenedor padre
+        // (Esto se sigue ejecutando aunque esté congelado, para que puedas mover al paciente)
         _contenedor.transform.localPosition = posicionManiqui;
         _contenedor.transform.localEulerAngles = rotacionManiqui;
         _contenedor.transform.localScale = Vector3.one * escala;
 
+        // 2. NUEVO: Si el esqueleto está congelado, detenemos la lectura de la cámara aquí mismo.
+        if (congelarEsqueleto)
+        {
+            return;
+        }
+
+        // 3. Lectura de la IA
         if (pipeline == null || pipeline.lastLandmarks == null || pipeline.lastLandmarks.Length < 33) return;
 
         for (int i = 0; i < _joints.Length; i++)
         {
             Vector3 raw = pipeline.lastLandmarks[i];
 
-            // 1. Lógica Espejo (X)
+            // Lógica Espejo (X)
             float rawX = modoEspejo ? (1.0f - raw.x) : raw.x;
 
-            // 2. Lógica Invertir Vertical (Y) - CORREGIDA
-            // BlazePose da Y=0 arriba y Y=1 abajo. Unity es al revés.
-            // Si invertirY es FALSE, hacemos (1 - raw.y) para corregirlo.
-            // Si invertirY es TRUE, usamos raw.y directo para voltearlo.
+            // Lógica Invertir Vertical (Y)
             float rawY = invertirY ? raw.y : (1.0f - raw.y);
 
             // Conversión a Metros (Centrado en 0,0) y aplanado (Z=0)
             float x = (rawX - 0.5f) * 2.0f;
             float y = (rawY - 0.5f) * 1.5f;
-            float z = distanciaProfundidad; // Usamos 0 para que sea plano
+            float z = distanciaProfundidad;
 
             _joints[i].transform.localPosition = new Vector3(x, y, z);
 
